@@ -4,11 +4,10 @@ from discord.ext import commands
 import aiohttp
 from bs4 import BeautifulSoup
 import asyncio
-import re
 import urllib.parse
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
-TOKEN = os.environ.get("TOKEN")   # <-- remplace ici
+TOKEN = os.environ.get("TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -24,27 +23,6 @@ HEADERS = {
 }
 
 # ─── SCRAPERS ─────────────────────────────────────────────────────────────────
-
-async def scrape_amazon(session, query):
-    url = f"https://www.amazon.fr/s?k={urllib.parse.quote(query)}"
-    try:
-        async with session.get(url, headers=HEADERS, timeout=10) as r:
-            soup = BeautifulSoup(await r.text(), "html.parser")
-        results = []
-        for item in soup.select('[data-component-type="s-search-result"]')[:3]:
-            title_el = item.select_one("h2 a span")
-            price_el = item.select_one(".a-price .a-offscreen")
-            link_el  = item.select_one("h2 a")
-            if title_el and price_el:
-                results.append({
-                    "title": title_el.text.strip()[:60],
-                    "price": price_el.text.strip(),
-                    "url":   "https://www.amazon.fr" + link_el["href"] if link_el else url,
-                })
-        return results
-    except Exception:
-        return []
-
 
 async def scrape_ldlc(session, query):
     url = f"https://www.ldlc.com/recherche/{urllib.parse.quote(query)}/"
@@ -90,47 +68,6 @@ async def scrape_materiel(session, query):
         return []
 
 
-async def scrape_ebay(session, query):
-    url = f"https://www.ebay.fr/sch/i.html?_nkw={urllib.parse.quote(query)}&_sop=15"
-    try:
-        async with session.get(url, headers=HEADERS, timeout=10) as r:
-            soup = BeautifulSoup(await r.text(), "html.parser")
-        results = []
-        for item in soup.select(".s-item")[:4]:
-            title_el = item.select_one(".s-item__title")
-            price_el = item.select_one(".s-item__price")
-            link_el  = item.select_one("a.s-item__link")
-            if title_el and price_el and title_el.text.strip() != "Shop on eBay":
-                results.append({
-                    "title": title_el.text.strip()[:60],
-                    "price": price_el.text.strip(),
-                    "url":   link_el["href"] if link_el else url,
-                })
-        return results[:3]
-    except Exception:
-        return []
-
-
-async def scrape_leboncoin(session, query):
-    url = f"https://www.leboncoin.fr/recherche?text={urllib.parse.quote(query)}&category=15"
-    try:
-        async with session.get(url, headers=HEADERS, timeout=10) as r:
-            soup = BeautifulSoup(await r.text(), "html.parser")
-        results = []
-        for item in soup.select("a[data-qa-id='aditem_container']")[:3]:
-            title_el = item.select_one("p[data-qa-id='aditem_title']")
-            price_el = item.select_one("span[data-qa-id='aditem_price']")
-            if title_el and price_el:
-                results.append({
-                    "title": title_el.text.strip()[:60],
-                    "price": price_el.text.strip(),
-                    "url":   "https://www.leboncoin.fr" + item["href"],
-                })
-        return results
-    except Exception:
-        return []
-
-
 # ─── COMMANDES ────────────────────────────────────────────────────────────────
 
 @bot.event
@@ -148,25 +85,18 @@ async def prix(ctx, *, composant: str = None):
         await ctx.send("❌ Usage : `!prix <composant>`\nEx: `!prix RTX 4070`")
         return
 
-    # Message de chargement
     msg = await ctx.send(f"🔍 Recherche de **{composant}** en cours...")
 
     async with aiohttp.ClientSession() as session:
         tasks = [
-            scrape_amazon(session, composant),
             scrape_ldlc(session, composant),
             scrape_materiel(session, composant),
-            scrape_ebay(session, composant),
-            scrape_leboncoin(session, composant),
         ]
-        amazon, ldlc, materiel, ebay, leboncoin = await asyncio.gather(*tasks)
+        ldlc, materiel = await asyncio.gather(*tasks)
 
     stores = {
-        "🛒 Amazon":        amazon,
         "💻 LDLC":          ldlc,
         "🖥️ Materiel.net": materiel,
-        "🔄 eBay":          ebay,
-        "🤝 Leboncoin":     leboncoin,
     }
 
     embed = discord.Embed(
@@ -223,7 +153,7 @@ async def aide(ctx):
     )
     embed.add_field(
         name="Boutiques",
-        value="Amazon 🛒 • LDLC 💻 • Materiel.net 🖥️ • eBay 🔄 • Leboncoin 🤝",
+        value="LDLC 💻 • Materiel.net 🖥️",
         inline=False,
     )
     await ctx.send(embed=embed)
