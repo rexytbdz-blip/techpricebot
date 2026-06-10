@@ -489,7 +489,7 @@ async def build(ctx, *, args: str = None):
 
     embed.set_footer(text="Rexy • Prix en temps réel sur LDLC & Materiel.net")
     await msg.edit(content=None, embed=embed)
-async def aide(ctx):
+@bot.command(name="aide")async def aide(ctx):
     embed = discord.Embed(
         title="📖 Aide — TechPriceBot",
         description="Bot de comparaison de prix pour composants PC",
