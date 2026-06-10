@@ -125,40 +125,77 @@ async def prix(ctx, *, composant: str = None):
 
     await msg.edit(content=None, embed=embed)
 
-# ─── BASE DE DONNÉES BOTTLENECK ───────────────────────────────────────────────
+# ─── BASE DE DONNÉES BOTTLENECK (mise à jour technical.city) ──────────────────
 
 CPU_SCORES = {
-    "i9-14900k": 100, "i9-14900kf": 100, "i7-14700k": 90, "i7-14700kf": 90,
-    "i5-14600k": 78, "i5-14600kf": 78, "i5-14400": 65, "i5-14400f": 65,
-    "i9-13900k": 98, "i9-13900kf": 98, "i7-13700k": 88, "i7-13700kf": 88,
-    "i5-13600k": 76, "i5-13600kf": 76, "i5-13400": 63, "i5-13400f": 63,
-    "i3-13100": 45, "i3-13100f": 45,
-    "i9-12900k": 90, "i7-12700k": 82, "i5-12600k": 70, "i5-12400": 60,
-    "i5-12400f": 60, "i3-12100": 42, "i3-12100f": 42,
-    "ryzen 9 7950x": 102, "ryzen 9 7900x": 95, "ryzen 7 7700x": 85,
-    "ryzen 7 7700": 82, "ryzen 5 7600x": 75, "ryzen 5 7600": 72,
-    "ryzen 9 5950x": 92, "ryzen 9 5900x": 88, "ryzen 7 5800x": 78,
-    "ryzen 7 5800x3d": 83, "ryzen 5 5600x": 68, "ryzen 5 5600": 65,
-    "ryzen 5 5500": 58,
-    "ryzen 9 3900x": 75, "ryzen 7 3700x": 65, "ryzen 5 3600": 58,
-    "ryzen 5 3600x": 60, "ryzen 3 3300x": 42,
+    # AMD Ryzen 9000
+    "ryzen 9 9950x": 98, "ryzen 9 9900x": 90, "ryzen 7 9700x": 82,
+    "ryzen 7 9800x3d": 88, "ryzen 5 9600x": 74, "ryzen 5 9600": 71,
+    # AMD Ryzen 7000
+    "ryzen 9 7950x": 95, "ryzen 9 7950x3d": 97, "ryzen 9 7900x": 88,
+    "ryzen 9 7900x3d": 91, "ryzen 9 7900": 85, "ryzen 7 7700x": 78,
+    "ryzen 7 7700": 74, "ryzen 7 7800x3d": 83, "ryzen 5 7600x": 68,
+    "ryzen 5 7600": 65,
+    # AMD Ryzen 5000
+    "ryzen 9 5950x": 85, "ryzen 9 5900x": 80, "ryzen 7 5800x3d": 78,
+    "ryzen 7 5800x": 72, "ryzen 7 5800": 69, "ryzen 5 5600x": 62,
+    "ryzen 5 5600": 59, "ryzen 5 5500": 52,
+    # AMD Ryzen 3000
+    "ryzen 9 3900x": 68, "ryzen 9 3900xt": 70, "ryzen 7 3700x": 60,
+    "ryzen 7 3800x": 62, "ryzen 7 3800xt": 63, "ryzen 5 3600x": 54,
+    "ryzen 5 3600": 52, "ryzen 3 3300x": 40,
+    # Intel Core 14ème gen
+    "i9-14900k": 96, "i9-14900kf": 96, "i9-14900": 90, "i9-14900f": 90,
+    "i7-14700k": 86, "i7-14700kf": 86, "i7-14700": 80, "i7-14700f": 80,
+    "i5-14600k": 72, "i5-14600kf": 72, "i5-14500": 64, "i5-14400": 60,
+    "i5-14400f": 60, "i3-14100": 42, "i3-14100f": 42,
+    # Intel Core 13ème gen
+    "i9-13900k": 94, "i9-13900kf": 94, "i9-13900": 88, "i9-13900f": 88,
+    "i7-13700k": 84, "i7-13700kf": 84, "i7-13700": 78, "i7-13700f": 78,
+    "i5-13600k": 70, "i5-13600kf": 70, "i5-13500": 62, "i5-13400": 58,
+    "i5-13400f": 58, "i3-13100": 40, "i3-13100f": 40,
+    # Intel Core 12ème gen
+    "i9-12900k": 88, "i9-12900kf": 88, "i9-12900": 82, "i7-12700k": 78,
+    "i7-12700kf": 78, "i7-12700": 72, "i5-12600k": 65, "i5-12600kf": 65,
+    "i5-12400": 56, "i5-12400f": 56, "i3-12100": 38, "i3-12100f": 38,
+    # Intel Core 11ème gen
+    "i9-11900k": 72, "i7-11700k": 65, "i5-11600k": 56, "i5-11400": 50,
+    "i5-11400f": 50, "i3-11100": 34,
+    # Intel Core 10ème gen
+    "i9-10900k": 65, "i7-10700k": 58, "i5-10600k": 50, "i5-10400": 44,
+    "i5-10400f": 44, "i3-10100": 32,
 }
 
 GPU_SCORES = {
-    "rtx 4090": 100, "rtx 4080": 88, "rtx 4080 super": 90,
-    "rtx 4070 ti super": 82, "rtx 4070 ti": 78, "rtx 4070 super": 72,
-    "rtx 4070": 66, "rtx 4060 ti": 58, "rtx 4060": 48,
-    "rtx 3090 ti": 85, "rtx 3090": 82, "rtx 3080 ti": 78,
-    "rtx 3080": 74, "rtx 3070 ti": 65, "rtx 3070": 62,
-    "rtx 3060 ti": 55, "rtx 3060": 46, "rtx 3050": 35,
-    "rtx 2080 ti": 68, "rtx 2080 super": 60, "rtx 2080": 57,
-    "rtx 2070 super": 53, "rtx 2070": 50, "rtx 2060 super": 46,
-    "rtx 2060": 42,
-    "rx 7900 xtx": 95, "rx 7900 xt": 86, "rx 7800 xt": 68,
-    "rx 7700 xt": 60, "rx 7600": 46,
-    "rx 6950 xt": 80, "rx 6900 xt": 76, "rx 6800 xt": 70,
-    "rx 6800": 65, "rx 6700 xt": 55, "rx 6650 xt": 48,
-    "rx 6600 xt": 45, "rx 6600": 42, "rx 6500 xt": 28,
+    # NVIDIA RTX 50xx
+    "rtx 5090": 98, "rtx 5080": 88, "rtx 5070 ti": 80, "rtx 5070": 72,
+    "rtx 5060 ti": 60, "rtx 5060": 50,
+    # NVIDIA RTX 40xx
+    "rtx 4090": 95, "rtx 4080 super": 84, "rtx 4080": 83,
+    "rtx 4070 ti super": 78, "rtx 4070 ti": 76, "rtx 4070 super": 73,
+    "rtx 4070": 66, "rtx 4060 ti": 56, "rtx 4060": 46,
+    # NVIDIA RTX 30xx
+    "rtx 3090 ti": 72, "rtx 3090": 65, "rtx 3080 ti": 64,
+    "rtx 3080 12gb": 62, "rtx 3080": 60, "rtx 3070 ti": 55,
+    "rtx 3070": 52, "rtx 3060 ti": 47, "rtx 3060": 40, "rtx 3050": 30,
+    # NVIDIA RTX 20xx
+    "rtx 2080 ti": 55, "rtx 2080 super": 48, "rtx 2080": 46,
+    "rtx 2070 super": 43, "rtx 2070": 40, "rtx 2060 super": 37,
+    "rtx 2060": 34,
+    # NVIDIA GTX 16xx
+    "gtx 1660 ti": 28, "gtx 1660 super": 27, "gtx 1660": 24,
+    "gtx 1650 super": 21, "gtx 1650": 18,
+    # AMD RX 9000
+    "rx 9070 xt": 67, "rx 9070": 62,
+    # AMD RX 7000
+    "rx 7900 xtx": 78, "rx 7900 xt": 72, "rx 7900 gre": 65,
+    "rx 7800 xt": 58, "rx 7700 xt": 52, "rx 7600 xt": 42, "rx 7600": 38,
+    # AMD RX 6000
+    "rx 6950 xt": 68, "rx 6900 xt": 65, "rx 6800 xt": 60, "rx 6800": 56,
+    "rx 6750 xt": 50, "rx 6700 xt": 46, "rx 6700": 42, "rx 6650 xt": 40,
+    "rx 6600 xt": 37, "rx 6600": 34, "rx 6500 xt": 20,
+    # AMD RX 5000
+    "rx 5700 xt": 32, "rx 5700": 29, "rx 5600 xt": 25,
 }
 
 CPU_RECOMMANDATIONS = {
@@ -316,9 +353,6 @@ async def bottleneck(ctx, *, args: str = None):
 
     embed.set_footer(text="TechPriceBot • Analyse Bottleneck")
     await msg.edit(content=None, embed=embed)
-
-
-@bot.command(name="aide")
 async def aide(ctx):
     embed = discord.Embed(
         title="📖 Aide — TechPriceBot",
