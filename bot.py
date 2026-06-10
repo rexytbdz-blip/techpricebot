@@ -353,6 +353,142 @@ async def bottleneck(ctx, *, args: str = None):
 
     embed.set_footer(text="TechPriceBot • Analyse Bottleneck")
     await msg.edit(content=None, embed=embed)
+# ─── BASE DE DONNÉES BUILD ────────────────────────────────────────────────────
+
+CONFIGS = {
+    "petit": {  # 400€ - 700€
+        "nom": "🟢 Config Entrée de gamme",
+        "cpu": "Ryzen 5 5600",
+        "gpu": "RTX 3060",
+        "ram": "RAM DDR4 16Go",
+        "ssd": "SSD 500Go",
+        "description": "Parfaite pour jouer en 1080p à des FPS confortables."
+    },
+    "moyen": {  # 700€ - 1100€
+        "nom": "🔵 Config Milieu de gamme",
+        "cpu": "Ryzen 5 7600X",
+        "gpu": "RTX 4070",
+        "ram": "RAM DDR5 16Go",
+        "ssd": "SSD 1To NVMe",
+        "description": "Excellente pour jouer en 1080p/1440p avec des graphismes élevés."
+    },
+    "haut": {  # 1100€ - 1800€
+        "nom": "🟣 Config Haut de gamme",
+        "cpu": "Ryzen 7 7700X",
+        "gpu": "RTX 4070 Ti",
+        "ram": "RAM DDR5 32Go",
+        "ssd": "SSD 1To NVMe",
+        "description": "Idéale pour jouer en 1440p/4K avec des FPS élevés."
+    },
+    "top": {  # 1800€+
+        "nom": "🔴 Config Top du top",
+        "cpu": "Ryzen 9 7900X",
+        "gpu": "RTX 4090",
+        "ram": "RAM DDR5 32Go",
+        "ssd": "SSD 2To NVMe",
+        "description": "La meilleure config possible. 4K ultra 144fps sans compromis."
+    },
+}
+
+def get_config(budget):
+    if budget < 700:
+        return CONFIGS["petit"]
+    elif budget < 1100:
+        return CONFIGS["moyen"]
+    elif budget < 1800:
+        return CONFIGS["haut"]
+    else:
+        return CONFIGS["top"]
+
+
+@bot.command(name="build")
+async def build(ctx, *, args: str = None):
+    if not args:
+        await ctx.send(
+            "❌ Usage : `!build <budget en euros>`\n"
+            "Exemple : `!build 800`"
+        )
+        return
+
+    # Nettoyer le budget (enlever €, espaces, etc.)
+    budget_str = args.replace("€", "").replace(" ", "").replace(",", "")
+    try:
+        budget = int(budget_str)
+    except ValueError:
+        await ctx.send("❌ Le budget doit être un nombre.\nExemple : `!build 800`")
+        return
+
+    if budget < 300:
+        await ctx.send("❌ Le budget minimum est de **300€** pour un PC gaming.")
+        return
+
+    msg = await ctx.send(f"🔍 Recherche de la meilleure config pour **{budget}€**...")
+
+    config = get_config(budget)
+
+    embed = discord.Embed(
+        title=f"🖥️ Config PC pour {budget}€",
+        description=f"{config['nom']}\n\n*{config['description']}*",
+        color=0x5865F2,
+    )
+
+    # Chercher les prix de chaque composant
+    async with aiohttp.ClientSession() as session:
+        cpu_ldlc, cpu_mat, gpu_ldlc, gpu_mat, ram_ldlc, ssd_ldlc = await asyncio.gather(
+            scrape_ldlc(session, config["cpu"]),
+            scrape_materiel(session, config["cpu"]),
+            scrape_ldlc(session, config["gpu"]),
+            scrape_materiel(session, config["gpu"]),
+            scrape_ldlc(session, config["ram"]),
+            scrape_ldlc(session, config["ssd"]),
+        )
+
+    # CPU
+    cpu_prix = ""
+    if cpu_ldlc:
+        cpu_prix += f"\n💻 LDLC : [{cpu_ldlc[0]['title'][:35]}]({cpu_ldlc[0]['url']}) — **{cpu_ldlc[0]['price']}**"
+    if cpu_mat:
+        cpu_prix += f"\n🖥️ Materiel.net : [{cpu_mat[0]['title'][:35]}]({cpu_mat[0]['url']}) — **{cpu_mat[0]['price']}**"
+    embed.add_field(
+        name=f"⚙️ Processeur — {config['cpu']}",
+        value=cpu_prix if cpu_prix else "*Prix non disponible*",
+        inline=False,
+    )
+
+    # GPU
+    gpu_prix = ""
+    if gpu_ldlc:
+        gpu_prix += f"\n💻 LDLC : [{gpu_ldlc[0]['title'][:35]}]({gpu_ldlc[0]['url']}) — **{gpu_ldlc[0]['price']}**"
+    if gpu_mat:
+        gpu_prix += f"\n🖥️ Materiel.net : [{gpu_mat[0]['title'][:35]}]({gpu_mat[0]['url']}) — **{gpu_mat[0]['price']}**"
+    embed.add_field(
+        name=f"🎮 Carte graphique — {config['gpu']}",
+        value=gpu_prix if gpu_prix else "*Prix non disponible*",
+        inline=False,
+    )
+
+    # RAM
+    ram_prix = ""
+    if ram_ldlc:
+        ram_prix += f"\n💻 LDLC : [{ram_ldlc[0]['title'][:35]}]({ram_ldlc[0]['url']}) — **{ram_ldlc[0]['price']}**"
+    embed.add_field(
+        name=f"🧠 RAM — {config['ram']}",
+        value=ram_prix if ram_prix else "*Prix non disponible*",
+        inline=False,
+    )
+
+    # SSD
+    ssd_prix = ""
+    if ssd_ldlc:
+        ssd_prix += f"\n💻 LDLC : [{ssd_ldlc[0]['title'][:35]}]({ssd_ldlc[0]['url']}) — **{ssd_ldlc[0]['price']}**"
+    embed.add_field(
+        name=f"💾 SSD — {config['ssd']}",
+        value=ssd_prix if ssd_prix else "*Prix non disponible*",
+        inline=False,
+    )
+
+    embed.set_footer(text="Rexy • Prix en temps réel sur LDLC & Materiel.net")
+    await msg.edit(content=None, embed=embed)
 async def aide(ctx):
     embed = discord.Embed(
         title="📖 Aide — TechPriceBot",
