@@ -498,12 +498,12 @@ async def aide(ctx):
     )
     embed.add_field(
         name="Commandes",
-          value=(
-    "`!prix <composant>` — Cherche le prix sur LDLC & Materiel.net\n"
-    "`!bottleneck <CPU> / <GPU>` — Analyse le bottleneck de ta config\n"
-    "`!build <budget>` — Suggère une config PC selon ton budget\n"
-    "`!aide` — Affiche ce message"
-),
+         value=(
+            "`!prix <composant>` — Cherche le prix sur LDLC & Materiel.net\n"
+            "`!bottleneck <CPU> / <GPU>` — Analyse le bottleneck de ta config\n"
+            "`!build <budget>` — Suggère une config PC selon ton budget\n"
+            "`!aide` — Affiche ce message"
+        ),
         inline=False,
     )
     embed.add_field(
