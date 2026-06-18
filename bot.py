@@ -24,23 +24,42 @@ HEADERS = {
 
 # ─── SCRAPERS ─────────────────────────────────────────────────────────────────
 
+# Mots à exclure pour éviter les laptops et résultats non pertinents
+MOTS_EXCLUS = [
+    "laptop", "portable", "notebook", "ultrabook", "chromebook",
+    "thinkpad", "ideapad", "inspiron", "pavilion", "aspire", "vivobook",
+    "elitebook", "probook", "latitude", "zenbook", "swift", "envy",
+    "gen 1", "gen 2", "gen 3", "gen 4", "gen 5", "gen 6", "gen 7",
+    "gen 8", "gen 9", "gen 10", "gen10", "gen9", "gen8",
+    "so-dimm", "sodimm",  # RAM laptop
+]
+
+def est_laptop(titre):
+    titre_lower = titre.lower()
+    return any(mot in titre_lower for mot in MOTS_EXCLUS)
+
 async def scrape_ldlc(session, query):
     url = f"https://www.ldlc.com/recherche/{urllib.parse.quote(query)}/"
     try:
         async with session.get(url, headers=HEADERS, timeout=10) as r:
             soup = BeautifulSoup(await r.text(), "html.parser")
         results = []
-        for item in soup.select(".listing-product li.pdt-item")[:3]:
+        for item in soup.select(".listing-product li.pdt-item"):
             title_el = item.select_one(".title-3")
             price_el = item.select_one(".price")
             link_el  = item.select_one("a.pdt-item")
             if title_el and price_el:
+                titre = title_el.text.strip()
+                if est_laptop(titre):
+                    continue  # Skip les laptops
                 price_text = price_el.text.strip().split("\n")[0]
                 results.append({
-                    "title": title_el.text.strip()[:60],
+                    "title": titre[:60],
                     "price": price_text,
                     "url":   "https://www.ldlc.com" + link_el["href"] if link_el else url,
                 })
+            if len(results) >= 3:
+                break
         return results
     except Exception:
         return []
@@ -52,17 +71,22 @@ async def scrape_materiel(session, query):
         async with session.get(url, headers=HEADERS, timeout=10) as r:
             soup = BeautifulSoup(await r.text(), "html.parser")
         results = []
-        for item in soup.select(".listing-product li.pdt-item")[:3]:
+        for item in soup.select(".listing-product li.pdt-item"):
             title_el = item.select_one(".title-3")
             price_el = item.select_one(".price")
             link_el  = item.select_one("a.pdt-item")
             if title_el and price_el:
+                titre = title_el.text.strip()
+                if est_laptop(titre):
+                    continue  # Skip les laptops
                 price_text = price_el.text.strip().split("\n")[0]
                 results.append({
-                    "title": title_el.text.strip()[:60],
+                    "title": titre[:60],
                     "price": price_text,
                     "url":   "https://www.materiel.net" + link_el["href"] if link_el else url,
                 })
+            if len(results) >= 3:
+                break
         return results
     except Exception:
         return []
@@ -360,32 +384,32 @@ CONFIGS = {
         "nom": "🟢 Config Entrée de gamme",
         "cpu": "Ryzen 5 5600",
         "gpu": "RTX 3060",
-        "ram": "RAM DDR4 16Go",
-        "ssd": "SSD 500Go",
+        "ram": "RAM DDR4 16Go desktop",
+        "ssd": "SSD NVMe 500Go M.2",
         "description": "Parfaite pour jouer en 1080p à des FPS confortables."
     },
     "moyen": {  # 700€ - 1100€
         "nom": "🔵 Config Milieu de gamme",
         "cpu": "Ryzen 5 7600X",
         "gpu": "RTX 4070",
-        "ram": "RAM DDR5 16Go",
-        "ssd": "SSD 1To NVMe",
+        "ram": "RAM DDR5 16Go desktop",
+        "ssd": "SSD NVMe 1To M.2",
         "description": "Excellente pour jouer en 1080p/1440p avec des graphismes élevés."
     },
     "haut": {  # 1100€ - 1800€
         "nom": "🟣 Config Haut de gamme",
         "cpu": "Ryzen 7 7700X",
         "gpu": "RTX 4070 Ti",
-        "ram": "RAM DDR5 32Go",
-        "ssd": "SSD 1To NVMe",
+        "ram": "RAM DDR5 32Go desktop",
+        "ssd": "SSD NVMe 1To M.2",
         "description": "Idéale pour jouer en 1440p/4K avec des FPS élevés."
     },
     "top": {  # 1800€+
         "nom": "🔴 Config Top du top",
         "cpu": "Ryzen 9 7900X",
         "gpu": "RTX 4090",
-        "ram": "RAM DDR5 32Go",
-        "ssd": "SSD 2To NVMe",
+        "ram": "RAM DDR5 32Go desktop",
+        "ssd": "SSD NVMe 2To M.2",
         "description": "La meilleure config possible. 4K ultra 144fps sans compromis."
     },
 }
