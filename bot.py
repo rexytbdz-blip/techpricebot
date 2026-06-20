@@ -11,7 +11,7 @@ import google.generativeai as genai
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 TOKEN = os.environ.get("TOKEN")
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-2.0-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
