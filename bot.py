@@ -6,12 +6,11 @@ import aiohttp
 from bs4 import BeautifulSoup
 import asyncio
 import urllib.parse
-import google.generativeai as genai
+from groq import Groq
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 TOKEN = os.environ.get("TOKEN")
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-2.0-flash")
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -27,9 +26,16 @@ HEADERS = {
 }
 
 # ─── HELPER IA ────────────────────────────────────────────────────────────────
-def gemini(system: str, prompt: str) -> str:
-    response = model.generate_content(f"{system}\n\n{prompt}")
-    return response.text
+def ask_groq(system: str, prompt: str, max_tokens: int = 900) -> str:
+    response = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=max_tokens,
+    )
+    return response.choices[0].message.content
 
 # ─── SCRAPERS ─────────────────────────────────────────────────────────────────
 
@@ -41,10 +47,12 @@ async def scrape_ldlc(session, query):
         results = []
         for item in soup.select(".listing-product li.pdt-item")[:3]:
             title_el = item.select_one(".title-3")
-            price_el = item.select_one(".price")
+            price_el = item.select_one(".price .price")
+            if not price_el:
+                price_el = item.select_one(".price")
             link_el  = item.select_one("a.pdt-item")
             if title_el and price_el:
-                price_text = price_el.text.strip().split("\n")[0]
+                price_text = price_el.text.strip().split()[0] + "€"
                 results.append({
                     "title": title_el.text.strip()[:60],
                     "price": price_text,
@@ -63,10 +71,12 @@ async def scrape_materiel(session, query):
         results = []
         for item in soup.select(".listing-product li.pdt-item")[:3]:
             title_el = item.select_one(".title-3")
-            price_el = item.select_one(".price")
+            price_el = item.select_one(".price .price")
+            if not price_el:
+                price_el = item.select_one(".price")
             link_el  = item.select_one("a.pdt-item")
             if title_el and price_el:
-                price_text = price_el.text.strip().split("\n")[0]
+                price_text = price_el.text.strip().split()[0] + "€"
                 results.append({
                     "title": title_el.text.strip()[:60],
                     "price": price_text,
@@ -76,7 +86,7 @@ async def scrape_materiel(session, query):
     except Exception:
         return []
 
-# ─── COMMANDES ────────────────────────────────────────────────────────────────
+# ─── EVENTS ───────────────────────────────────────────────────────────────────
 
 @bot.event
 async def on_ready():
@@ -86,6 +96,17 @@ async def on_ready():
     ))
     print(f"✅ Bot connecté : {bot.user}")
 
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("❌ Argument manquant. Tape `!aide` pour voir les commandes.")
+    elif isinstance(error, commands.CommandNotFound):
+        pass
+    else:
+        await ctx.send(f"❌ Erreur : {error}")
+
+# ─── COMMANDES ────────────────────────────────────────────────────────────────
 
 # ── !prix ─────────────────────────────────────────────────────────────────────
 @bot.command(name="prix")
@@ -115,7 +136,7 @@ async def prix(ctx, *, composant: str = None):
             embed.add_field(name=store_name, value="*Aucun résultat*", inline=False)
 
     if not found_any:
-        embed.description = "😕 Aucun résultat trouvé. Vérifie le nom du composant."
+        embed.description = "😕 Aucun résultat trouvé. Essaie un nom plus précis."
 
     await msg.edit(content=None, embed=embed)
 
@@ -138,12 +159,11 @@ async def bottleneck(ctx, *, args: str = None):
 
     try:
         reponse = await asyncio.to_thread(
-            gemini,
+            ask_groq,
             (
                 "Tu es un expert en hardware PC. Tu analyses les bottlenecks entre CPU et GPU "
                 "avec précision. Tu réponds UNIQUEMENT en français, de façon concise et structurée. "
-                "Tu connais tous les composants AMD, Intel et NVIDIA sortis jusqu'en 2025. "
-                "N'utilise pas de markdown avec des astérisques, utilise du texte simple."
+                "Tu connais tous les composants AMD, Intel et NVIDIA."
             ),
             (
                 f"Analyse le bottleneck entre :\n"
@@ -152,9 +172,10 @@ async def bottleneck(ctx, *, args: str = None):
                 f"Réponds avec exactement ce format :\n"
                 f"**Résultat :** [✅ Équilibré / ⚠️ Bottleneck léger / 🔴 Bottleneck sévère]\n"
                 f"**Bottleneck estimé :** X% (côté CPU ou GPU)\n"
-                f"**Impact gaming :** 1080p / 1440p / 4K (une ligne par résolution)\n"
-                f"**Conseil :** (upgrade recommandé si bottleneck > 15%, sinon confirme que c'est bon)"
+                f"**Impact gaming :** 1080p / 1440p / 4K\n"
+                f"**Conseil :** upgrade recommandé ou confirmation que c'est bon"
             ),
+            800,
         )
     except Exception as e:
         await msg.edit(content=f"❌ Erreur IA : {e}")
@@ -165,7 +186,7 @@ async def bottleneck(ctx, *, args: str = None):
         description=reponse,
         color=0xFEE75C,
     )
-    embed.set_footer(text="RexyBot • Analyse IA powered by Gemini")
+    embed.set_footer(text="RexyBot • Analyse IA powered by Groq")
     await msg.edit(content=None, embed=embed)
 
 
@@ -192,10 +213,9 @@ async def build(ctx, *, args: str = None):
 
     msg = await ctx.send(f"🤖 L'IA prépare ta config pour **{budget}€**...")
 
-    # Étape 1 : Gemini génère la config en JSON
     try:
         json_brut = await asyncio.to_thread(
-            gemini,
+            ask_groq,
             (
                 "Tu es un expert en configuration PC gaming sur le marché français. "
                 "Tu réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après, "
@@ -206,12 +226,12 @@ async def build(ctx, *, args: str = None):
                 f"Réponds UNIQUEMENT avec ce JSON (noms courts et précis pour les recherches LDLC) :\n"
                 f'{{"cpu":"<nom>","gpu":"<nom>","ram":"<nom>","ssd":"<nom>","mobo":"<nom>","psu":"<nom>","case":"<nom>","description":"<phrase courte>"}}'
             ),
+            400,
         )
     except Exception as e:
         await msg.edit(content=f"❌ Erreur IA : {e}")
         return
 
-    # Parser le JSON
     try:
         json_propre = json_brut.strip().strip("```json").strip("```").strip()
         config = json.loads(json_propre)
@@ -221,7 +241,6 @@ async def build(ctx, *, args: str = None):
 
     await msg.edit(content=f"🔍 Recherche des prix pour ta config **{budget}€**...")
 
-    # Étape 2 : scraping parallèle pour tous les composants
     async with aiohttp.ClientSession() as session:
         (
             cpu_ldlc, cpu_mat,
@@ -257,13 +276,13 @@ async def build(ctx, *, args: str = None):
             lines.append(f"🖥️ Materiel.net : [{mat_res[0]['title'][:40]}]({mat_res[0]['url']}) — **{mat_res[0]['price']}**")
         return "\n".join(lines) if lines else "*Prix non disponible*"
 
-    embed.add_field(name=f"⚙️ CPU — {config['cpu']}",       value=champ(cpu_ldlc, cpu_mat), inline=False)
-    embed.add_field(name=f"🎮 GPU — {config['gpu']}",       value=champ(gpu_ldlc, gpu_mat), inline=False)
-    embed.add_field(name=f"🧠 RAM — {config['ram']}",       value=champ(ram_ldlc),          inline=False)
-    embed.add_field(name=f"💾 SSD — {config['ssd']}",       value=champ(ssd_ldlc),          inline=False)
-    embed.add_field(name=f"🔌 Carte mère — {config['mobo']}", value=champ(mobo_ldlc),       inline=False)
-    embed.add_field(name=f"⚡ Alimentation — {config['psu']}", value=champ(psu_ldlc),       inline=False)
-    embed.add_field(name=f"📦 Boîtier — {config['case']}",  value=champ(case_ldlc),         inline=False)
+    embed.add_field(name=f"⚙️ CPU — {config['cpu']}",        value=champ(cpu_ldlc, cpu_mat), inline=False)
+    embed.add_field(name=f"🎮 GPU — {config['gpu']}",        value=champ(gpu_ldlc, gpu_mat), inline=False)
+    embed.add_field(name=f"🧠 RAM — {config['ram']}",        value=champ(ram_ldlc),          inline=False)
+    embed.add_field(name=f"💾 SSD — {config['ssd']}",        value=champ(ssd_ldlc),          inline=False)
+    embed.add_field(name=f"🔌 Carte mère — {config['mobo']}", value=champ(mobo_ldlc),        inline=False)
+    embed.add_field(name=f"⚡ Alimentation — {config['psu']}", value=champ(psu_ldlc),        inline=False)
+    embed.add_field(name=f"📦 Boîtier — {config['case']}",   value=champ(case_ldlc),         inline=False)
 
     embed.set_footer(text="RexyBot • Config IA + Prix temps réel LDLC & Materiel.net")
     await msg.edit(content=None, embed=embed)
