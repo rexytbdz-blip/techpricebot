@@ -224,7 +224,7 @@ async def build(ctx, *, args: str = None):
             (
                 f"Génère une configuration PC gaming optimisée pour un budget de {budget}€ sur le marché français.\n"
                 f"Réponds UNIQUEMENT avec ce JSON (noms courts et précis pour les recherches LDLC) :\n"
-                f'{{"cpu":"<nom>","gpu":"<nom>","ram":"<nom>","ssd":"<nom>","mobo":"<nom>","psu":"<nom>","case":"<nom>","description":"<phrase courte>"}}'
+                f'{{"cpu":"<marque + modèle complet ex: AMD Ryzen 5 7600>","gpu":"<marque + modèle complet ex: ASUS Radeon RX 7600>","ram":"<marque + modèle complet ex: Corsair Vengeance 16Go DDR5>","ssd":"<marque + modèle complet ex: Samsung 870 EVO 1To SSD>","mobo":"<marque + modèle complet ex: MSI B650 Gaming Plus>","psu":"<marque + modèle complet ex: Corsair CV650 650W>","case":"<marque + modèle complet ex: Fractal Design Meshify C>","description":"<phrase courte>"}}'
             ),
             400,
         )
